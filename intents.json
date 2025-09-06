@@ -31,11 +31,15 @@
       "examples": {
         "en": [
           "How do I apply for scholarship?",
-          "Scholarship form process"
+          "Scholarship form process",
+          "Scholarship details",
+          "Where to get scholarship form?"
         ],
         "hi": [
           "स्कॉलरशिप के लिए आवेदन कैसे करें?",
-          "छात्रवृत्ति फॉर्म कहाँ से मिलेगा?"
+          "छात्रवृत्ति फॉर्म कहाँ से मिलेगा?",
+          "स्कॉलरशिप की जानकारी",
+          "छात्रवृत्ति प्रक्रिया बताइये"
         ]
       },
       "response": {
@@ -48,11 +52,15 @@
       "examples": {
         "en": [
           "Has the timetable changed?",
-          "Any class schedule updates?"
+          "Any class schedule updates?",
+          "Timetable update please",
+          "Is there a new class schedule?"
         ],
         "hi": [
           "टाइमटेबल में कोई बदलाव हुआ है?",
-          "क्लास के समय में बदलाव है?"
+          "क्लास के समय में बदलाव है?",
+          "क्या नया टाइमटेबल आया है?",
+          "कक्षा का शेड्यूल अपडेट हुआ?"
         ]
       },
       "response": {
@@ -63,42 +71,3 @@
   ]
 }
 
-        "hi": "पहले साल की फीस अधिकतर कार्यक्रमों के लिए ₹50,000 है। भुगतान की अंतिम तिथि 15 जुलाई है। कोर्स-वार विवरण के लिए Fees सेक्शन देखें।"
-      }
-    },
-    {
-      "id": "scholarship_form",
-      "examples": {
-        "en": [
-          "How do I apply for scholarship?",
-          "Scholarship form process"
-        ],
-        "hi": [
-          "स्कॉलरशिप के लिए आवेदन कैसे करें?",
-          "छात्रवृत्ति फॉर्म कहाँ से मिलेगा?"
-        ]
-      },
-      "response": {
-        "en": "Apply online through the Scholarship Form on the website. Upload required documents.",
-        "hi": "छात्रवृत्ति के लिए आवेदन वेबसाइट पर Scholarship Form से करें। आवश्यक दस्तावेज़ अपलोड करें।"
-      }
-    },
-    {
-      "id": "timetable_changes",
-      "examples": {
-        "en": [
-          "Has the timetable changed?",
-          "Any class schedule updates?"
-        ],
-        "hi": [
-          "टाइमटेबल में कोई बदलाव हुआ है?",
-          "क्लास के समय में बदलाव है?"
-        ]
-      },
-      "response": {
-        "en": "Any timetable changes are published in the Notices section of the website.",
-        "hi": "टाइमटेबल में बदलाव Notices सेक्शन में प्रकाशित किए जाते हैं।"
-      }
-    }
-  ]
-}

@@ -4,7 +4,7 @@ import pandas as pd
 import numpy as np
 import nltk
 
-# NLTK downloads
+# download required NLTK resources
 for pkg in ["punkt", "punkt_tab", "wordnet", "omw-1.4"]:
     try:
         nltk.download(pkg, quiet=True)
@@ -15,16 +15,14 @@ from nltk.tokenize import word_tokenize
 from nltk.stem import WordNetLemmatizer
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.linear_model import LogisticRegression
-from sklearn.metrics.pairwise import cosine_similarity
-from sentence_transformers import SentenceTransformer, util
 
-# ---------------- CONFIG ----------------
+# ---------- CONFIG ----------
 INTENTS_FILE = "intents.json"
 LOG_FILE = "chat_logs.csv"
 CONF_THRESHOLD = 0.55
 lemmatizer = WordNetLemmatizer()
 
-# ---------------- HELPERS ----------------
+# ---------- HELPERS ----------
 def normalize(text: str) -> str:
     text = text.lower()
     tokens = word_tokenize(text)
@@ -50,10 +48,9 @@ def log(user, bot, intent, conf, mode):
     else:
         df.to_csv(LOG_FILE, mode="a", header=False, index=False)
 
-# ---------------- LOAD DATA ----------------
+# ---------- LOAD DATA ----------
 intents = load_intents()
 
-# Train classifier
 X, y = [], []
 for intent in intents:
     for lang, examples in intent["examples"].items():
@@ -66,23 +63,8 @@ Xv = clf_vec.fit_transform(X)
 clf = LogisticRegression(max_iter=300)
 clf.fit(Xv, y)
 
-# TF-IDF retrieval corpus
-docs = [normalize(it["response"].get("en", "")) for it in intents]
-retr_vec = TfidfVectorizer()
-doc_vecs = retr_vec.fit_transform(docs)
-
-# Semantic embeddings
-embed_model = SentenceTransformer("paraphrase-multilingual-MiniLM-L12-v2")
-example_texts, example_labels = [], []
-for intent in intents:
-    for lang, examples in intent["examples"].items():
-        for ex in examples:
-            example_texts.append(ex)
-            example_labels.append(intent["id"])
-example_embeddings = embed_model.encode(example_texts, convert_to_tensor=True)
-
-# ---------------- STREAMLIT APP ----------------
-st.title("🎓 Multilingual Campus Chatbot")
+# ---------- STREAMLIT APP ----------
+st.title("🎓 Multilingual Campus Chatbot (Lightweight)")
 st.caption("Ask about fees, scholarships, timetable… in English or Hindi.")
 
 if "history" not in st.session_state:
@@ -91,7 +73,6 @@ if "history" not in st.session_state:
 user_input = st.text_input("💬 Your question:")
 
 if st.button("Ask") and user_input.strip():
-    # classifier
     xv = clf_vec.transform([normalize(user_input)])
     probs = clf.predict_proba(xv)[0]
     pred = clf.classes_[np.argmax(probs)]
@@ -104,30 +85,17 @@ if st.button("Ask") and user_input.strip():
         bot_text = intent_obj["response"]["en"]
         mode = "intent"
     else:
-        # semantic similarity
-        query_emb = embed_model.encode(user_input, convert_to_tensor=True)
-        cos_scores = util.pytorch_cos_sim(query_emb, example_embeddings)[0]
-        best_idx = int(cos_scores.argmax())
-        best_score = float(cos_scores[best_idx])
-        best_intent_id = example_labels[best_idx]
-        if best_score > 0.55:
-            intent_obj = next(it for it in intents if it["id"] == best_intent_id)
-            bot_text = intent_obj["response"]["en"]
-            mode = "semantic"
-
-    # keyword fallback
-    if not bot_text:
+        # keyword fallback
         if "fee" in user_input.lower() or "fess" in user_input.lower() or "fees" in user_input.lower():
             fee_intent = next(it for it in intents if it["id"] == "fee_info")
             bot_text = fee_intent["response"]["en"]
             mode = "keyword"
 
-    # full fallback
+    # final fallback
     if not bot_text:
         bot_text = "⚠️ I couldn’t find a clear answer. Please contact the helpdesk."
         mode = "fallback"
 
-    # update history + log
     st.session_state.history.append(("You", user_input))
     st.session_state.history.append(("Bot", bot_text))
     log(user_input, bot_text, pred, conf, mode)
@@ -139,6 +107,7 @@ for speaker, text in st.session_state.history:
     else:
         st.markdown(f"<span style='color:blue'>**{speaker}:** {text}</span>", unsafe_allow_html=True)
 
+# safe log viewer
 with st.expander("📑 Show recent logs"):
     if os.path.exists(LOG_FILE) and os.path.getsize(LOG_FILE) > 0:
         try:
@@ -153,6 +122,3 @@ with st.expander("📑 Show recent logs"):
             st.warning(f"⚠️ Could not read logs: {e}")
     else:
         st.info("No logs yet.")
-
-
-

@@ -143,13 +143,16 @@ with st.expander("📑 Show recent logs"):
     if os.path.exists(LOG_FILE) and os.path.getsize(LOG_FILE) > 0:
         try:
             df = pd.read_csv(LOG_FILE)
-            if not df.empty:
+            if df.shape[0] > 0:
                 st.dataframe(df.tail(10))
             else:
-                st.info("Log file is empty. No conversations yet.")
-        except Exception:
-            st.warning("⚠️ Could not read logs. File may be corrupted.")
+                st.info("Log file exists but is empty.")
+        except pd.errors.EmptyDataError:
+            st.info("Log file is empty. No conversations yet.")
+        except Exception as e:
+            st.warning(f"⚠️ Could not read logs: {e}")
     else:
         st.info("No logs yet.")
+
 
 

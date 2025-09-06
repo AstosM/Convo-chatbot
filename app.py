@@ -64,7 +64,7 @@ clf = LogisticRegression(max_iter=300)
 clf.fit(Xv, y)
 
 # ---------- STREAMLIT APP ----------
-st.title("🎓 Multilingual Campus Chatbot (Lightweight)")
+st.title("🎓 Multilingual Campus Chatbot")
 st.caption("Ask about fees, scholarships, timetable… in English or Hindi.")
 
 if "history" not in st.session_state:

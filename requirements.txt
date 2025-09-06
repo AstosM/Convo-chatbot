@@ -1,3 +1,6 @@
 streamlit
-opencv-python-headless
+nltk
+scikit-learn
+pandas
 numpy
+googletrans==4.0.0-rc1

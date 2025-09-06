@@ -1,61 +1,146 @@
-import cv2
-import numpy as np
 import streamlit as st
-import time
+import json, os, datetime
+import pandas as pd
+import numpy as np
 
-st.title("🧙 Invisibility Cloak - Streamlit Edition")
-st.markdown("Put on a red cloth and watch the magic happen!")
+import nltk
+from nltk.tokenize import word_tokenize
+from nltk.stem import WordNetLemmatizer
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.linear_model import LogisticRegression
+from sklearn.metrics.pairwise import cosine_similarity
 
-start_button = st.button("Start Cloak Effect")
-frame_placeholder = st.empty()
+# optional translation
+try:
+    from googletrans import Translator
+    translator = Translator()
+    TRANSLATE = True
+except:
+    translator = None
+    TRANSLATE = False
 
-if start_button:
-    cap = cv2.VideoCapture(0)
-    time.sleep(3)
+nltk.download('punkt', quiet=True)
+nltk.download('wordnet', quiet=True)
+lemmatizer = WordNetLemmatizer()
 
-    # Capture background
-    st.info("Capturing background... Hold still for 3 seconds")
-    for i in range(30):
-        ret, background = cap.read()
-    background = np.flip(background, axis=1)
+# ----------------- CONFIG -----------------
+INTENTS_FILE = "intents.json"
+LOG_FILE = "chat_logs.csv"
+CONF_THRESHOLD = 0.55
 
-    while cap.isOpened():
-        ret, frame = cap.read()
-        if not ret:
-            break
+# ----------------- HELPERS -----------------
+def normalize(text: str) -> str:
+    text = text.lower()
+    tokens = word_tokenize(text)
+    tokens = [lemmatizer.lemmatize(t) for t in tokens if any(c.isalnum() for c in t)]
+    return " ".join(tokens)
 
-        frame = np.flip(frame, axis=1)
-        hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
+def translate_to_en(text: str) -> str:
+    if TRANSLATE:
+        try:
+            return translator.translate(text, dest="en").text
+        except:
+            return text
+    return text
 
-        # Define red cloak range
-        lower_red1 = np.array([0, 120, 70])
-        upper_red1 = np.array([10, 255, 255])
-        lower_red2 = np.array([170, 120, 70])
-        upper_red2 = np.array([180, 255, 255])
+def load_intents():
+    with open(INTENTS_FILE, "r", encoding="utf-8") as f:
+        return json.load(f)["intents"]
 
-        # Create mask
-        mask1 = cv2.inRange(hsv, lower_red1, upper_red1)
-        mask2 = cv2.inRange(hsv, lower_red2, upper_red2)
-        cloak_mask = mask1 + mask2
+def prepare_data(intents):
+    X, y = [], []
+    for intent in intents:
+        for lang, examples in intent["examples"].items():
+            for ex in examples:
+                ex_en = translate_to_en(ex) if lang != "en" else ex
+                X.append(normalize(ex_en))
+                y.append(intent["id"])
+    return X, y
 
-        # Remove noise
-        cloak_mask = cv2.morphologyEx(cloak_mask, cv2.MORPH_OPEN, np.ones((3, 3), np.uint8), iterations=2)
-        cloak_mask = cv2.dilate(cloak_mask, np.ones((3, 3), np.uint8), iterations=1)
+def train_classifier(X, y):
+    vec = TfidfVectorizer()
+    Xv = vec.fit_transform(X)
+    clf = LogisticRegression(max_iter=300)
+    clf.fit(Xv, y)
+    return vec, clf
 
-        # Invert mask
-        inverse_mask = cv2.bitwise_not(cloak_mask)
+def retrieve(text, vectorizer, doc_vectors, doc_meta, k=2):
+    q = normalize(translate_to_en(text))
+    qv = vectorizer.transform([q])
+    sims = cosine_similarity(qv, doc_vectors)[0]
+    top_idx = sims.argsort()[::-1][:k]
+    return [(doc_meta[i], sims[i]) for i in top_idx]
 
-        # Extract cloak & non-cloak areas
-        cloak_area = cv2.bitwise_and(background, background, mask=cloak_mask)
-        non_cloak_area = cv2.bitwise_and(frame, frame, mask=inverse_mask)
+def log(user, bot, intent, conf, mode):
+    row = {
+        "timestamp": datetime.datetime.utcnow().isoformat(),
+        "user_text": user,
+        "bot_text": bot,
+        "intent": intent,
+        "confidence": conf,
+        "mode": mode,
+    }
+    df = pd.DataFrame([row])
+    if not os.path.exists(LOG_FILE):
+        df.to_csv(LOG_FILE, index=False)
+    else:
+        df.to_csv(LOG_FILE, mode="a", header=False, index=False)
 
-        # Combine
-        final_output = cv2.addWeighted(cloak_area, 1, non_cloak_area, 1, 0)
+# ----------------- BUILD MODELS -----------------
+intents = load_intents()
+X, y = prepare_data(intents)
+clf_vec, clf = train_classifier(X, y)
 
-        # Convert BGR → RGB for Streamlit
-        final_rgb = cv2.cvtColor(final_output, cv2.COLOR_BGR2RGB)
+# retrieval corpus
+docs = [normalize(translate_to_en(it["response"].get("en", ""))) for it in intents]
+retr_vec = TfidfVectorizer()
+doc_vecs = retr_vec.fit_transform(docs)
+doc_meta = intents
 
-        frame_placeholder.image(final_rgb, channels="RGB")
+# ----------------- STREAMLIT APP -----------------
+st.title("🎓 Multilingual Campus Chatbot")
+st.caption("Ask about fees, scholarships, timetable… in English or Hindi. Logs saved for continuous improvement.")
 
-    cap.release()
+if "history" not in st.session_state:
+    st.session_state.history = []
 
+user_input = st.text_input("💬 Your question:", "")
+
+if st.button("Ask") and user_input.strip():
+    # predict
+    txt_en = translate_to_en(user_input)
+    xv = clf_vec.transform([normalize(txt_en)])
+    probs = clf.predict_proba(xv)[0]
+    pred = clf.classes_[np.argmax(probs)]
+    conf = max(probs)
+
+    # retrieval fallback
+    retrievals = retrieve(user_input, retr_vec, doc_vecs, doc_meta)
+    if conf >= CONF_THRESHOLD:
+        intent_obj = next(it for it in intents if it["id"] == pred)
+        bot_text = intent_obj["response"]["en"]
+        mode = "intent"
+    elif retrievals and retrievals[0][1] > 0.3:
+        bot_text = retrievals[0][0]["response"]["en"]
+        mode = "retrieval"
+    else:
+        bot_text = "⚠️ I couldn’t find a clear answer. Please contact the helpdesk."
+        mode = "fallback"
+
+    st.session_state.history.append(("You", user_input))
+    st.session_state.history.append(("Bot", bot_text))
+
+    log(user_input, bot_text, pred, conf, mode)
+
+# show conversation
+for speaker, text in st.session_state.history:
+    if speaker == "You":
+        st.markdown(f"**{speaker}:** {text}")
+    else:
+        st.markdown(f"<span style='color:blue'>**{speaker}:** {text}</span>", unsafe_allow_html=True)
+
+with st.expander("📑 Show last 10 logs"):
+    if os.path.exists(LOG_FILE):
+        st.dataframe(pd.read_csv(LOG_FILE).tail(10))
+    else:
+        st.info("No logs yet.")

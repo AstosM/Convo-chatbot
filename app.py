@@ -123,17 +123,26 @@ if st.button("Ask") and user_input.strip():
     conf = max(probs)
 
     # retrieval fallback
-    retrievals = retrieve(user_input, retr_vec, doc_vecs, doc_meta)
-    if conf >= CONF_THRESHOLD:
-        intent_obj = next(it for it in intents if it["id"] == pred)
-        bot_text = intent_obj["response"]["en"]
-        mode = "intent"
-    elif retrievals and retrievals[0][1] > 0.3:
-        bot_text = retrievals[0][0]["response"]["en"]
-        mode = "retrieval"
-    else:
-        bot_text = "⚠️ I couldn’t find a clear answer. Please contact the helpdesk."
-        mode = "fallback"
+# ----------------- RESPONSE LOGIC -----------------
+if conf >= CONF_THRESHOLD:
+    intent_obj = next(it for it in intents if it["id"] == pred)
+    bot_text = intent_obj["response"]["en"]
+    mode = "intent"
+
+elif retrievals and retrievals[0][1] > 0.3:
+    bot_text = retrievals[0][0]["response"]["en"]
+    mode = "retrieval"
+
+else:
+    bot_text = "⚠️ I couldn’t find a clear answer. Please contact the helpdesk."
+    mode = "fallback"
+
+    # 🔹 Extra simple keyword fallback for fee-related queries
+    if "fee" in user_input.lower() or "fess" in user_input.lower() or "fees" in user_input.lower():
+        fee_intent = next(it for it in intents if it["id"] == "fee_info")
+        bot_text = fee_intent["response"]["en"]
+        mode = "keyword"
+
 
     st.session_state.history.append(("You", user_input))
     st.session_state.history.append(("Bot", bot_text))

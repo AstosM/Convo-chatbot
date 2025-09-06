@@ -1,0 +1,56 @@
+{
+  "intents": [
+    {
+      "id": "fee_deadline",
+      "examples": {
+        "en": [
+          "When is the fee deadline?",
+          "What is the last date to pay fees?",
+          "Fee due date?"
+        ],
+        "hi": [
+          "फीस भरने की आख़िरी तारीख़ कब है?",
+          "फीस की आख़री तारीख़ बताइये"
+        ]
+      },
+      "response": {
+        "en": "The fee deadline for the semester is 15th July. After this, late fees apply.",
+        "hi": "सेमेस्टर की फीस भरने की अंतिम तिथि 15 जुलाई है। इसके बाद लेट फीस लागू होगी।"
+      }
+    },
+    {
+      "id": "scholarship_form",
+      "examples": {
+        "en": [
+          "How do I apply for scholarship?",
+          "Scholarship form process"
+        ],
+        "hi": [
+          "स्कॉलरशिप के लिए आवेदन कैसे करें?",
+          "छात्रवृत्ति फॉर्म कहाँ से मिलेगा?"
+        ]
+      },
+      "response": {
+        "en": "Apply online through the Scholarship Form on the website. Upload required documents.",
+        "hi": "छात्रवृत्ति के लिए आवेदन वेबसाइट पर Scholarship Form से करें। आवश्यक दस्तावेज़ अपलोड करें।"
+      }
+    },
+    {
+      "id": "timetable_changes",
+      "examples": {
+        "en": [
+          "Has the timetable changed?",
+          "Any class schedule updates?"
+        ],
+        "hi": [
+          "टाइमटेबल में कोई बदलाव हुआ है?",
+          "क्लास के समय में बदलाव है?"
+        ]
+      },
+      "response": {
+        "en": "Any timetable changes are published in the Notices section of the website.",
+        "hi": "टाइमटेबल में बदलाव Notices सेक्शन में प्रकाशित किए जाते हैं।"
+      }
+    }
+  ]
+}

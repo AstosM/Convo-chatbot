@@ -1,7 +1,7 @@
 {
   "intents": [
     {
-      "id": "fee_deadline",
+      "id": "fee_info",
       "examples": {
         "en": [
           "When is the fee deadline?",
@@ -10,7 +10,9 @@
           "1st year fee details",
           "How much is the first year fee?",
           "Tell me about fees for 1st semester",
-          "fess amount"
+          "fess amount",
+          "fee amunt",
+          "1st yer fess pls"
         ],
         "hi": [
           "फीस भरने की आख़िरी तारीख़ कब है?",
@@ -21,6 +23,46 @@
       },
       "response": {
         "en": "The 1st year fee for most programs is ₹50,000. The payment deadline is 15th July. Please check the Fees section for course-wise details.",
+        "hi": "पहले साल की फीस अधिकतर कार्यक्रमों के लिए ₹50,000 है। भुगतान की अंतिम तिथि 15 जुलाई है। कोर्स-वार विवरण के लिए Fees सेक्शन देखें।"
+      }
+    },
+    {
+      "id": "scholarship_form",
+      "examples": {
+        "en": [
+          "How do I apply for scholarship?",
+          "Scholarship form process"
+        ],
+        "hi": [
+          "स्कॉलरशिप के लिए आवेदन कैसे करें?",
+          "छात्रवृत्ति फॉर्म कहाँ से मिलेगा?"
+        ]
+      },
+      "response": {
+        "en": "Apply online through the Scholarship Form on the website. Upload required documents.",
+        "hi": "छात्रवृत्ति के लिए आवेदन वेबसाइट पर Scholarship Form से करें। आवश्यक दस्तावेज़ अपलोड करें।"
+      }
+    },
+    {
+      "id": "timetable_changes",
+      "examples": {
+        "en": [
+          "Has the timetable changed?",
+          "Any class schedule updates?"
+        ],
+        "hi": [
+          "टाइमटेबल में कोई बदलाव हुआ है?",
+          "क्लास के समय में बदलाव है?"
+        ]
+      },
+      "response": {
+        "en": "Any timetable changes are published in the Notices section of the website.",
+        "hi": "टाइमटेबल में बदलाव Notices सेक्शन में प्रकाशित किए जाते हैं।"
+      }
+    }
+  ]
+}
+
         "hi": "पहले साल की फीस अधिकतर कार्यक्रमों के लिए ₹50,000 है। भुगतान की अंतिम तिथि 15 जुलाई है। कोर्स-वार विवरण के लिए Fees सेक्शन देखें।"
       }
     },

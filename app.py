@@ -1,3 +1,11 @@
+import nltk
+
+# auto-download required resources
+for pkg in ["punkt", "punkt_tab", "wordnet", "omw-1.4"]:
+    try:
+        nltk.download(pkg, quiet=True)
+    except:
+        pass
 import streamlit as st
 import json, os, datetime
 import pandas as pd

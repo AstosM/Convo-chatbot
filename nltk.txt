@@ -1,0 +1,4 @@
+punkt
+punkt_tab
+wordnet
+omw-1.4

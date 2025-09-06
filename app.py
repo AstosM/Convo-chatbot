@@ -58,3 +58,4 @@ if start_button:
         frame_placeholder.image(final_rgb, channels="RGB")
 
     cap.release()
+

@@ -6,16 +6,22 @@
         "en": [
           "When is the fee deadline?",
           "What is the last date to pay fees?",
-          "Fee due date?"
+          "Fee due date?",
+          "1st year fee details",
+          "How much is the first year fee?",
+          "Tell me about fees for 1st semester",
+          "fess amount"
         ],
         "hi": [
           "फीस भरने की आख़िरी तारीख़ कब है?",
-          "फीस की आख़री तारीख़ बताइये"
+          "फीस की आख़री तारीख़ बताइये",
+          "पहले साल की फीस कितनी है?",
+          "पहली सेमेस्टर की फीस बताइये"
         ]
       },
       "response": {
-        "en": "The fee deadline for the semester is 15th July. After this, late fees apply.",
-        "hi": "सेमेस्टर की फीस भरने की अंतिम तिथि 15 जुलाई है। इसके बाद लेट फीस लागू होगी।"
+        "en": "The 1st year fee for most programs is ₹50,000. The payment deadline is 15th July. Please check the Fees section for course-wise details.",
+        "hi": "पहले साल की फीस अधिकतर कार्यक्रमों के लिए ₹50,000 है। भुगतान की अंतिम तिथि 15 जुलाई है। कोर्स-वार विवरण के लिए Fees सेक्शन देखें।"
       }
     },
     {

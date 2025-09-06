@@ -1,83 +1,39 @@
+import streamlit as st
+import json, os, datetime
+import pandas as pd
+import numpy as np
 import nltk
 
-# auto-download required resources
+# NLTK downloads
 for pkg in ["punkt", "punkt_tab", "wordnet", "omw-1.4"]:
     try:
         nltk.download(pkg, quiet=True)
     except:
         pass
-import streamlit as st
-import json, os, datetime
-import pandas as pd
-import numpy as np
 
-import nltk
 from nltk.tokenize import word_tokenize
 from nltk.stem import WordNetLemmatizer
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics.pairwise import cosine_similarity
+from sentence_transformers import SentenceTransformer, util
 
-# optional translation
-try:
-    from googletrans import Translator
-    translator = Translator()
-    TRANSLATE = True
-except:
-    translator = None
-    TRANSLATE = False
-
-nltk.download('punkt', quiet=True)
-nltk.download('wordnet', quiet=True)
-lemmatizer = WordNetLemmatizer()
-
-# ----------------- CONFIG -----------------
+# ---------------- CONFIG ----------------
 INTENTS_FILE = "intents.json"
 LOG_FILE = "chat_logs.csv"
 CONF_THRESHOLD = 0.55
+lemmatizer = WordNetLemmatizer()
 
-# ----------------- HELPERS -----------------
+# ---------------- HELPERS ----------------
 def normalize(text: str) -> str:
     text = text.lower()
     tokens = word_tokenize(text)
     tokens = [lemmatizer.lemmatize(t) for t in tokens if any(c.isalnum() for c in t)]
     return " ".join(tokens)
 
-def translate_to_en(text: str) -> str:
-    if TRANSLATE:
-        try:
-            return translator.translate(text, dest="en").text
-        except:
-            return text
-    return text
-
 def load_intents():
     with open(INTENTS_FILE, "r", encoding="utf-8") as f:
         return json.load(f)["intents"]
-
-def prepare_data(intents):
-    X, y = [], []
-    for intent in intents:
-        for lang, examples in intent["examples"].items():
-            for ex in examples:
-                ex_en = translate_to_en(ex) if lang != "en" else ex
-                X.append(normalize(ex_en))
-                y.append(intent["id"])
-    return X, y
-
-def train_classifier(X, y):
-    vec = TfidfVectorizer()
-    Xv = vec.fit_transform(X)
-    clf = LogisticRegression(max_iter=300)
-    clf.fit(Xv, y)
-    return vec, clf
-
-def retrieve(text, vectorizer, doc_vectors, doc_meta, k=2):
-    q = normalize(translate_to_en(text))
-    qv = vectorizer.transform([q])
-    sims = cosine_similarity(qv, doc_vectors)[0]
-    top_idx = sims.argsort()[::-1][:k]
-    return [(doc_meta[i], sims[i]) for i in top_idx]
 
 def log(user, bot, intent, conf, mode):
     row = {
@@ -86,7 +42,7 @@ def log(user, bot, intent, conf, mode):
         "bot_text": bot,
         "intent": intent,
         "confidence": conf,
-        "mode": mode,
+        "mode": mode
     }
     df = pd.DataFrame([row])
     if not os.path.exists(LOG_FILE):
@@ -94,59 +50,86 @@ def log(user, bot, intent, conf, mode):
     else:
         df.to_csv(LOG_FILE, mode="a", header=False, index=False)
 
-# ----------------- BUILD MODELS -----------------
+# ---------------- LOAD DATA ----------------
 intents = load_intents()
-X, y = prepare_data(intents)
-clf_vec, clf = train_classifier(X, y)
 
-# retrieval corpus
-docs = [normalize(translate_to_en(it["response"].get("en", ""))) for it in intents]
+# Train classifier
+X, y = [], []
+for intent in intents:
+    for lang, examples in intent["examples"].items():
+        for ex in examples:
+            X.append(normalize(ex))
+            y.append(intent["id"])
+
+clf_vec = TfidfVectorizer()
+Xv = clf_vec.fit_transform(X)
+clf = LogisticRegression(max_iter=300)
+clf.fit(Xv, y)
+
+# TF-IDF retrieval corpus
+docs = [normalize(it["response"].get("en", "")) for it in intents]
 retr_vec = TfidfVectorizer()
 doc_vecs = retr_vec.fit_transform(docs)
-doc_meta = intents
 
-# ----------------- STREAMLIT APP -----------------
+# Semantic embeddings
+embed_model = SentenceTransformer("paraphrase-multilingual-MiniLM-L12-v2")
+example_texts, example_labels = [], []
+for intent in intents:
+    for lang, examples in intent["examples"].items():
+        for ex in examples:
+            example_texts.append(ex)
+            example_labels.append(intent["id"])
+example_embeddings = embed_model.encode(example_texts, convert_to_tensor=True)
+
+# ---------------- STREAMLIT APP ----------------
 st.title("🎓 Multilingual Campus Chatbot")
-st.caption("Ask about fees, scholarships, timetable… in English or Hindi. Logs saved for continuous improvement.")
+st.caption("Ask about fees, scholarships, timetable… in English or Hindi.")
 
 if "history" not in st.session_state:
     st.session_state.history = []
 
-user_input = st.text_input("💬 Your question:", "")
+user_input = st.text_input("💬 Your question:")
 
 if st.button("Ask") and user_input.strip():
-    # predict
-    txt_en = translate_to_en(user_input)
-    xv = clf_vec.transform([normalize(txt_en)])
+    # classifier
+    xv = clf_vec.transform([normalize(user_input)])
     probs = clf.predict_proba(xv)[0]
     pred = clf.classes_[np.argmax(probs)]
     conf = max(probs)
 
-    # retrieval fallback
-# ----------------- RESPONSE LOGIC -----------------
-if conf >= CONF_THRESHOLD:
-    intent_obj = next(it for it in intents if it["id"] == pred)
-    bot_text = intent_obj["response"]["en"]
-    mode = "intent"
+    bot_text, mode = None, None
 
-elif retrievals and retrievals[0][1] > 0.3:
-    bot_text = retrievals[0][0]["response"]["en"]
-    mode = "retrieval"
+    if conf >= CONF_THRESHOLD:
+        intent_obj = next(it for it in intents if it["id"] == pred)
+        bot_text = intent_obj["response"]["en"]
+        mode = "intent"
+    else:
+        # semantic similarity
+        query_emb = embed_model.encode(user_input, convert_to_tensor=True)
+        cos_scores = util.pytorch_cos_sim(query_emb, example_embeddings)[0]
+        best_idx = int(cos_scores.argmax())
+        best_score = float(cos_scores[best_idx])
+        best_intent_id = example_labels[best_idx]
+        if best_score > 0.55:
+            intent_obj = next(it for it in intents if it["id"] == best_intent_id)
+            bot_text = intent_obj["response"]["en"]
+            mode = "semantic"
 
-else:
-    bot_text = "⚠️ I couldn’t find a clear answer. Please contact the helpdesk."
-    mode = "fallback"
+    # keyword fallback
+    if not bot_text:
+        if "fee" in user_input.lower() or "fess" in user_input.lower() or "fees" in user_input.lower():
+            fee_intent = next(it for it in intents if it["id"] == "fee_info")
+            bot_text = fee_intent["response"]["en"]
+            mode = "keyword"
 
-    # 🔹 Extra simple keyword fallback for fee-related queries
-    if "fee" in user_input.lower() or "fess" in user_input.lower() or "fees" in user_input.lower():
-        fee_intent = next(it for it in intents if it["id"] == "fee_info")
-        bot_text = fee_intent["response"]["en"]
-        mode = "keyword"
+    # full fallback
+    if not bot_text:
+        bot_text = "⚠️ I couldn’t find a clear answer. Please contact the helpdesk."
+        mode = "fallback"
 
-
+    # update history + log
     st.session_state.history.append(("You", user_input))
     st.session_state.history.append(("Bot", bot_text))
-
     log(user_input, bot_text, pred, conf, mode)
 
 # show conversation
@@ -156,7 +139,7 @@ for speaker, text in st.session_state.history:
     else:
         st.markdown(f"<span style='color:blue'>**{speaker}:** {text}</span>", unsafe_allow_html=True)
 
-with st.expander("📑 Show last 10 logs"):
+with st.expander("📑 Show recent logs"):
     if os.path.exists(LOG_FILE):
         st.dataframe(pd.read_csv(LOG_FILE).tail(10))
     else:
